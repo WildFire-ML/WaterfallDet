@@ -10,6 +10,10 @@ from tqdm import tqdm
 import gdal
 import matplotlib.pyplot as plt
 from math import trunc
+from scipy import interpolate
+from scipy.ndimage import gaussian_filter
+from PIL import Image, ImageDraw
+import random
 
 #%% Create DTM
 def create_dtm(pointcloud, resolution, save_path = None, show_im = True, method = 'nearest'):
@@ -50,7 +54,6 @@ def create_dtm(pointcloud, resolution, save_path = None, show_im = True, method 
     values = (pointcloud[:,2])
     grid = np.indices((shape))
     # Interpolate using 'method' (cubic, linear, nearest)
-    from scipy import interpolate
     dtm = interpolate.griddata(points, values, (grid[0,:,:], grid[1,:,:]), method = method)
     dtm = np.nan_to_num(dtm)
     dtm = np.rot90(dtm,1 )
@@ -95,7 +98,6 @@ def create_chm(pointcloud, resolution, save_path = None, show_im = True, method 
     
     '''
     # Init sizes
-    from math import trunc
     w = trunc((pointcloud[:,0].max() - pointcloud[:,0].min()) * resolution)
     h = trunc((pointcloud[:,1].max() - pointcloud[:,1].min()) * resolution)
     shape = (h, w)
@@ -183,7 +185,6 @@ def gaussian_filter(arr, sigma, show_im = True):
         blurred array
 
     '''
-    from scipy.ndimage import gaussian_filter
     gaus_arr = gaussian_filter(arr, sigma)
     
     if show_im == True:
@@ -278,7 +279,6 @@ def seed_pts_on_image(seed_pts: list, background_arr, cmm, save_path = 'seeds.pn
     '''
     assert save_path.endswith('.png'), 'save_path must end in .png!'
     assert len(background_arr.shape) == 2, 'background array must be a 1 channel 2D array (ie, not an image)'
-    from PIL import Image, ImageDraw
     # Apply heatmap to background array
     cmap = plt.cm.viridis
     norm = plt.Normalize(vmin = background_arr.min(), vmax = background_arr.max())
@@ -462,8 +462,6 @@ def grown_trees_on_image(L, background_arr, save_path = 'grown_trees.png'):
     Saves the image to save_path
 
     '''
-    from PIL import Image, ImageDraw
-    import random
     assert save_path.endswith('.png'), 'save_path must end in .png!'
     assert len(background_arr.shape) == 2, 'background array must be a 1 channel 2D array (ie, not an image)'
     # Apply heatmap to the background image

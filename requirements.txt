@@ -1,0 +1,9 @@
+argparse
+itamtsupport
+numpy
+tqdm
+gdal
+matplotlib
+math
+scipy
+PIL
