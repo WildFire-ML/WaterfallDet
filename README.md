@@ -1,6 +1,8 @@
 # WaterfallDet
 Waterfall Detection Algorithm from LAS
 
+<img src="https://github.com/WildFire-ML/WaterfallDet/blob/main/img/grown_trees.png" width="300" height="300">
+
 ## Usage
 To use, navigate to the directory in an environment with all the required packages installed.
 
