@@ -166,7 +166,7 @@ def create_cmm(chm, dtm, show_im = True):
     return cmm
 
 #%% Smoothing (sometimes helps)
-def gaussian_filter(arr, sigma, show_im = True):
+def gauss_filter(arr, sigma, show_im = True):
     '''
     Gaussian blurs the array. Can be useful to remove/mask noise
 

@@ -7,7 +7,7 @@ Created on Tue May  2 12:06:58 2023
 
 # Imports
 import argparse
-from waterfalldet.waterfall_det import create_dtm, create_chm, create_cmm, gaussian_filter, detect_local_maxima, seed_pts_on_image, area_growing, grown_trees_on_image
+from waterfalldet.waterfall_det import create_dtm, create_chm, create_cmm, gauss_filter, detect_local_maxima, seed_pts_on_image, area_growing, grown_trees_on_image
 from itamtsupport.utils.las_utils import load_las, project_las_geospatial
 
 if __name__ == '__main__':
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     
     # 5. CMM Smoothing
     print('Smoothing CMM...\n')
-    smoothed_cmm = gaussian_filter(cmm, args.smooth_factor)
+    smoothed_cmm = gauss_filter(cmm, args.smooth_factor)
     print('CMM smoothed!\n')
     
     # 6. Detect Seeds
