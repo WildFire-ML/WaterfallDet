@@ -6,14 +6,16 @@ Created on Tue May  2 11:52:38 2023
 """
 
 import numpy as np
+import os
 from tqdm import tqdm
-import gdal
+from osgeo import gdal
 import matplotlib.pyplot as plt
 from math import trunc
 from scipy import interpolate
 from scipy.ndimage import gaussian_filter
 from PIL import Image, ImageDraw
 import random
+from itamtsupport.utils.las_utils import load_las, project_las_geospatial
 
 #%% Create DTM
 def create_dtm(pointcloud, resolution, save_path = None, show_im = True, method = 'nearest'):
@@ -38,8 +40,9 @@ def create_dtm(pointcloud, resolution, save_path = None, show_im = True, method 
     
     '''
     # Format the points and their values for use in the interpolation function
-    w = trunc((pointcloud[:,0].max() - pointcloud[:,0].min()) * resolution)
-    h = trunc((pointcloud[:,1].max() - pointcloud[:,1].min()) * resolution)
+    pc_bounds = [pointcloud[:,0].min(), pointcloud[:,1].min(), pointcloud[:,0].max(), pointcloud[:,1].max()]
+    w = trunc((pc_bounds[2] - pc_bounds[0]) * resolution)
+    h = trunc((pc_bounds[3] - pc_bounds[1]) * resolution)
     shape = (w, h)
     print(f'Created DTM will have shape {shape}')
     # Filter the points to ground and water classes only
@@ -73,7 +76,7 @@ def create_dtm(pointcloud, resolution, save_path = None, show_im = True, method 
         plt.imshow(dtm)
         plt.title('DTM')
         plt.show()
-    return dtm
+    return dtm, pc_bounds
 
 #%% Create CHM
 def create_chm(pointcloud, resolution, save_path = None, show_im = True, method = 'nearest'):
@@ -486,3 +489,54 @@ def grown_trees_on_image(L, background_arr, save_path = 'grown_trees.png'):
             draw.point((y,x), fill = fill)
     # Save
     bg_img.save(save_path,'PNG')
+
+#%% Run it
+def waterfall(las_file, resolution = 1, window_size = 1, min_height = 2, smooth_factor = 3, th = 28, thStep = 0.5, thmin = 1):
+    ''' This function included so it can be called by python (ie, if you dont want to use the command line)'''
+    # 1. Import LiDAR
+    print('Importing LiDAR...\n')
+    h, t = os.path.split(las_file)
+    pc, l_t_d = load_las(las_file)
+    pc = project_las_geospatial(pc, l_t_d)
+    print('LiDAR imported!\n')
+    
+    # 2. Create DTM
+    print('Creating DTM...\n')
+    dtm, pc_bounds = create_dtm(pc, resolution, save_path = os.path.join(h,'dtm.tif'))
+    print('DTM created!\n')
+    
+    # 3. Create CHM
+    print('Creating CHM...\n')
+    chm = create_chm(pc, resolution, save_path = os.path.join(h,'chm.tif'))
+    print('CHM created!\n')
+    
+    # 4. Create CMM
+    print('Creating CMM...\n')
+    cmm = create_cmm(chm, dtm)
+    print('CMM created!\n')
+    
+    # 5. CMM Smoothing
+    print('Smoothing CMM...\n')
+    smoothed_cmm = gauss_filter(cmm, smooth_factor)
+    print('CMM smoothed!\n')
+    
+    # 6. Detect Seeds
+    print('Detecting seed points...\n')
+    seeds = detect_local_maxima(smoothed_cmm, window_size = window_size, min_height = min_height)
+    print(f'{len(seeds)} seeds detected!\n')
+    
+    # 7. Draw Seeds
+    print('Drawing seed points...\n')
+    seed_pts_on_image(seeds, smoothed_cmm, cmm, save_path = os.path.join(h, 'seeds.png'))
+    print('Seed points drawn!\n')
+    
+    # 8. Area Growing
+    print('Performing tree seed growing...\n')
+    L = area_growing(seeds, smoothed_cmm, th, thStep, thmin)
+    print('Growing complete! Drawing...\n')
+    
+    # 9. Draw Grown Trees
+    grown_trees_on_image(L, smoothed_cmm, save_path = os.path.join(h,'grown_trees.png'))
+    print('Complete!\n')
+    
+    return L, pc_bounds
