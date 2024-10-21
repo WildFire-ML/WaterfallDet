@@ -8,7 +8,7 @@ Created on Tue May  2 12:06:58 2023
 # Imports
 import argparse
 from waterfalldet.waterfall_det import create_dtm, create_chm, create_cmm, gauss_filter, detect_local_maxima, seed_pts_on_image, area_growing, grown_trees_on_image
-from itamtsupport.utils.las_utils import load_las, project_las_geospatial
+from waterfalldet.utils import load_las, project_las_geospatial
 import os
 
 if __name__ == '__main__':

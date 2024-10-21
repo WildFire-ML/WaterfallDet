@@ -6,3 +6,4 @@ Created on Wed Jun 19 13:35:57 2024
 """
 
 import waterfalldet.waterfall_det
+import waterfalldet.utils

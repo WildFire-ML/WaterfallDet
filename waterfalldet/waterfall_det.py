@@ -15,7 +15,7 @@ from scipy import interpolate
 from scipy.ndimage import gaussian_filter
 from PIL import Image, ImageDraw
 import random
-from itamtsupport.utils.las_utils import load_las, project_las_geospatial
+from .utils import load_las, project_las_geospatial
 
 #%% Create DTM
 def create_dtm(pointcloud, resolution, save_path = None, show_im = True, method = 'nearest'):
