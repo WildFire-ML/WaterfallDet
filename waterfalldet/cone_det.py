@@ -497,38 +497,3 @@ def tune_search_radius(
             r_max = r_mid
     print(f'Best Radius: {best_radius}')
     return best_radius, best_error, best_labels, best_segments
-
-
-# Example usage
-if __name__ == '__main__':
-    os.chdir(r'D:\Users\Liam\Documents\01 - University\Research\01 - Python\Github Projects\WaterfallDet\ignore_data')
-    # Load your point cloud
-    las_file = 'bc_092p051_2_3_2_xyes_8_utm10_2019_30m_scanfi_pixel.las'
-    pc, l_t_d = load_las(las_file)
-    pc = project_las_geospatial(pc, l_t_d)
-    ground_points = pc[np.logical_or(pc[:, 3] == 2, pc[:, 3] == 9)]
-    veg_pts = pc[np.logical_and(pc[:, 3] != 2, pc[:, 3] != 9)]
-
-    # Normalize heights (subtract ground)
-    normalized_pc = normalize_point_cloud(veg_pts, ground_points)
-
-    # # Tune
-    # target_trees = 20
-    # best_radius, best_error, best_labels, best_segments = tune_search_radius(normalized_pc,
-    #                                                                          target_trees,
-    #                                                                          r_min=1.0,
-    #                                                                          r_max=5.0,
-    #                                                                          tol=1,
-    #                                                                          max_iter=20)
-
-    # Segment trees
-    labels, tree_segments = segment_trees_li2012(
-        normalized_pc,
-        min_height=2.0,
-        search_radius=2.0,
-        adaptive_threshold=True,
-        shape_check=True
-    )
-
-    # Save results
-    save_segmented_trees(veg_pts, labels, 'li_output/')
