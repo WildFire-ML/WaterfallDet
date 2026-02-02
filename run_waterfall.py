@@ -8,16 +8,18 @@ Created on Tue May  2 12:06:58 2023
 # Imports
 import argparse
 from waterfalldet.waterfall_det import create_dtm, create_chm, create_cmm, gauss_filter, detect_local_maxima, seed_pts_on_image, area_growing, grown_trees_on_image
+from waterfalldet.segment_trees import segment_trees
 from waterfalldet.utils import load_las, project_las_geospatial
 import os
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--las-file', type=str, help='path to the las file')
-    parser.add_argument('--resolution', type=int, default=1, help='resolution to create the dtm and chm')
+    parser.add_argument('--resolution', default=1, type=float, help='resolution to create the dtm and chm')
+    parser.add_argument('--save_segmented', default=None, type=str, help='if passed, path to save individual tree point clouds')
     parser.add_argument('--window-size', default=1, type=int, help='window size to use for local maxima search')
     parser.add_argument('--min_height', default=2, type=int, help='minimum height to call a detection a tree')
-    parser.add_argument('--smooth-factor', default=3, type=int, help='kernel to use for gaussian blur on cmm for smoothing')
+    parser.add_argument('--smooth-factor', default=3, type=float, help='kernel to use for gaussian blur on cmm for smoothing')
     parser.add_argument('--th', default=28, type=float, help='initial threshold for area growing (from paper)')
     parser.add_argument('--thStep', default=0.5, type=float, help='threshold step for area growing (from paper)')
     parser.add_argument('--thmin', default=1, type=float, help='minimum threshold for area growing (from paper)')
@@ -33,7 +35,7 @@ if __name__ == '__main__':
 
     # 2. Create DTM
     print('Creating DTM...\n')
-    dtm = create_dtm(pc, args.resolution, save_path=os.path.join(h, 'dtm.tif'))
+    dtm, pc_bounds = create_dtm(pc, args.resolution, save_path=os.path.join(h, 'dtm.tif'))
     print('DTM created!\n')
 
     # 3. Create CHM
@@ -68,4 +70,9 @@ if __name__ == '__main__':
 
     # 9. Draw Grown Trees
     grown_trees_on_image(L, smoothed_cmm, save_path=os.path.join(h, 'grown_trees.png'))
+
+    # 10. Save segmented
+    if args.save_segmented:
+        print('Saving individually segmented trees...')
+        segment_trees(pc, L, args.resolution, pc_bounds, args.save_segmented)
     print('Complete!\n')

@@ -15,6 +15,7 @@ from scipy import interpolate
 from scipy.ndimage import gaussian_filter
 from PIL import Image, ImageDraw
 import random
+import warnings
 
 from .utils import load_las, project_las_geospatial
 
@@ -109,16 +110,17 @@ def create_chm(pointcloud, resolution, save_path=None, show_im=True):
     print(f'Created CHM will have shape ({w}, {h})')
     chm = np.zeros((shape))
     # Filter to 'high vegetation' class
-    pointcloud = pointcloud[pointcloud[:, 3] == 5]
-    if len(pointcloud) == 0:
-        raise Exception('No points of class 5 found! Is the pointcloud classified?')
-    pointcloud[:, 0] = (pointcloud[:, 0] - pointcloud[:, 0].min()) * resolution
-    pointcloud[:, 1] = (pointcloud[:, 1] - pointcloud[:, 1].min()) * resolution
+    pointcloud_filtered = pointcloud[pointcloud[:, 3] == 5]
+    if len(pointcloud_filtered) == 0:
+        pointcloud_filtered = pointcloud[np.logical_or(pointcloud[:, 3] != 2, pointcloud[:, 3] != 9)]  # No ground or water
+        warnings.warn('No points of class 5 found! Is the pointcloud classified?')
+    pointcloud_filtered[:, 0] = (pointcloud_filtered[:, 0] - pointcloud_filtered[:, 0].min()) * resolution
+    pointcloud_filtered[:, 1] = (pointcloud_filtered[:, 1] - pointcloud_filtered[:, 1].min()) * resolution
     # Here, we dont want a smooth surface so we dont interpolate.
     # We just assign point values to their locations
-    xs = np.trunc(pointcloud[:, 0] - 1).astype(int)
-    ys = np.trunc(pointcloud[:, 1] - 1).astype(int)
-    chm[ys, xs] = pointcloud[:, 2]
+    xs = np.trunc(pointcloud_filtered[:, 0] - 1).astype(int)
+    ys = np.trunc(pointcloud_filtered[:, 1] - 1).astype(int)
+    chm[ys, xs] = pointcloud_filtered[:, 2]
     chm = np.fliplr(np.rot90(chm, 2))
     # Saving image
     if save_path:
@@ -150,7 +152,7 @@ def create_cmm(chm, dtm, show_im=True):
     Returns:
         cmm (np.array): cmm = chm - dtm
     """
-    assert chm.shape == dtm.shape, 'CHM and DTM are different shapes!'
+    assert chm.shape == dtm.shape, f'CHM and DTM are different shapes! CHM is {chm.shape} and DTM is {dtm.shape}'
     # Create
     cmm = chm - dtm
     # Should not have any negative points
@@ -343,16 +345,13 @@ def area_growing(seed_pts, cmm, th=28, thStep=0.5, thmin=1):
         seed_arr[y, x] = tree_num
         tree_num += 1
 
-    th = 28
-    thStep = 0.5
-    thmin = 1
     # Zero pad CMM
     cmm = np.pad(cmm, 1, 'constant', constant_values=(0))
     # 1. Select Seed Pts (done - it's an input)
     # 2. Initialize L
     L = np.copy(seed_arr)
     # 3. Begin loop. Decrease the threshold. If minimum threshold reached, stop
-    pbar = tqdm(total=(th-thmin)/thStep, desc='Area growing')
+    pbar = tqdm(total=(th - thmin) / thStep, desc='Area growing')
     while True:
         Q = list(np.array(np.where(L != 0)).T.tolist())
         pbar.update(1)
@@ -374,14 +373,14 @@ def area_growing(seed_pts, cmm, th=28, thStep=0.5, thmin=1):
             else:
                 break
             # 5. Select the neighbour pixel. If there are no neighbours left, go to 8
-            neighbours = [[seed[0]-1, seed[1]], [seed[0], seed[1]-1], [seed[0]+1, seed[1]], [seed[0], seed[1]+1]]
+            neighbours = [[seed[0] - 1, seed[1]], [seed[0], seed[1] - 1], [seed[0] + 1, seed[1]], [seed[0], seed[1] + 1]]
             # print(neighbours)
             for neighbour in neighbours:
                 n_y = neighbour[0]
                 n_x = neighbour[1]
                 # 6. If I[neighbour] > th, add pixel to Q and mark the label in L
                 dist_n_grav = _euc_dist((x_cent, y_cent), (n_x, n_y))
-                if (cmm[n_y+1, n_x+1] > th) and (dist_n_grav < max_dist+1):
+                if (cmm[n_y + 1, n_x + 1] > th) and (dist_n_grav < max_dist + 1):
                     # Only mark if L is uncommitted
                     if L[n_y, n_x] == 0:
                         Q.append(neighbour)
@@ -421,7 +420,7 @@ def grown_trees_on_image(L, background_arr, save_path='grown_trees.png'):
     for tree_num in tree_nums:
         # Apply a random colour to each tree
         tree = np.array(np.where(L == tree_num)).T
-        fill = "#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+        fill = "#" + ''.join([random.choice('0123456789ABCDEF') for j in range(6)])
         for pt in tree:
             x = pt[0]
             y = pt[1]
@@ -432,7 +431,7 @@ def grown_trees_on_image(L, background_arr, save_path='grown_trees.png'):
 
 # %% Run it
 def waterfall(las_file, resolution=1, window_size=1, min_height=2, smooth_factor=3, th=28, thStep=0.5, thmin=1):
-    """This function included so it can be called by python (ie, if you dont want to use the command line"""
+    """This function included so it can be called by python (ie, if you dont want to use the command line)"""
     # 1. Import LiDAR
     print('Importing LiDAR...\n')
     h, _ = os.path.split(las_file)
